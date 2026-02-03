@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Dialog, 
   DialogContent, 
@@ -19,9 +18,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Database, Search, RefreshCcw, HardDrive, Edit3, Settings2 } from "lucide-react";
+import { Database, Search, RefreshCcw, HardDrive, Edit3, Settings2, AlertTriangle, Zap } from "lucide-react";
 
-// Fix for TypeScript performance memory error
 interface PerformanceWithMemory extends Performance {
   memory?: {
     usedJSHeapSize: number;
@@ -32,11 +30,10 @@ interface PerformanceWithMemory extends Performance {
 
 export default function Home() {
   const [data, setData] = useState<any[]>([]);
-  const [status, setStatus] = useState("System Idle");
+  const [status, setStatus] = useState("System Standby");
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   
-  // Edit Modal State
   const [editingRow, setEditingRow] = useState<any>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -44,7 +41,6 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
-    // Update memory usage every second
     const interval = setInterval(() => {
       const usage = (performance as PerformanceWithMemory).memory?.usedJSHeapSize;
       setMemUsage(usage);
@@ -54,20 +50,21 @@ export default function Home() {
 
   const handleFetch = async () => {
     setIsLoading(true);
-    setStatus("Downloading 300MB JSON payload...");
+    setData([]);
+    setStatus("Initiating Stream: 1M Rows...");
     const start = performance.now();
     
     try {
       const res = await fetch("/api/data");
-      if (!res.ok) throw new Error("Network error during file streaming");
+      if (!res.ok) throw new Error("Stream Interrupted");
       
       const json = await res.json();
       const end = performance.now();
       
       setData(json);
-      setStatus(`Bottleneck hit: ${json.length.toLocaleString()} items parsed in ${Math.round(end - start)}ms`);
+      setStatus(`Bottleneck: ${json.length.toLocaleString()} items parsed in ${Math.round(end - start)}ms`);
     } catch (err: any) {
-      setStatus("Critical Failure: " + err.message);
+      setStatus("Failure: " + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -75,10 +72,8 @@ export default function Home() {
 
   const handleUpdate = async () => {
     if (!editingRow) return;
-    
     setIsUpdating(true);
-    setStatus("Blocking IO: Re-writing 300MB storage...");
-    const start = performance.now();
+    setStatus("Performing Bloated Write...");
     
     try {
       const res = await fetch("/api/data", {
@@ -87,233 +82,244 @@ export default function Home() {
       });
       
       if (res.ok) {
-        const end = performance.now();
-        setStatus(`Disk Write Success: ${Math.round(end - start)}ms elapsed`);
+        setStatus(`Mutation Persistent`);
         setData(prev => prev.map(item => item.id === editingRow.id ? editingRow : item));
         setEditingRow(null);
+      } else {
+        const err = await res.json();
+        setStatus("Error: " + err.error);
       }
     } catch (err) {
-      setStatus("Disk Write Failed");
+      setStatus("Connection Lost");
     } finally {
       setIsUpdating(false);
     }
   };
 
-  // Heavy main-thread filtering
+  // UNOPTIMIZED FILTERING: No virtualization, raw DOM pressure
   const filteredData = search 
     ? data.filter(item => 
         item.name.toLowerCase().includes(search.toLowerCase()) || 
         item.email.toLowerCase().includes(search.toLowerCase()) ||
-        item.role.toLowerCase().includes(search.toLowerCase())
-      ).slice(0, 15)
-    : data.slice(0, 15);
+        item.role?.toLowerCase().includes(search.toLowerCase())
+      )
+    : data;
 
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-4 md:p-8 font-sans selection:bg-rose-500 selection:text-white">
-      <div className="max-w-[1600px] mx-auto space-y-8">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#050505] text-[#171717] dark:text-[#ededed] font-sans selection:bg-indigo-500/30">
+      
+      {/* Premium Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-20 dark:opacity-40">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="relative max-w-[1400px] mx-auto px-6 py-12 md:py-20 space-y-12">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-4">
-            <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-neutral-900 dark:text-neutral-50 leading-none">
-              UNOPTIMIZED<span className="text-destructive font-serif italic">!</span>
-            </h1>
-            <p className="text-neutral-500 dark:text-neutral-400 text-lg max-w-2xl leading-relaxed">
-              Managing <span className="text-neutral-900 dark:text-neutral-100 font-bold">1 Million Rows</span> inside a single JSON file. 
-              Searching and saving will block the JavaScript main thread.
-            </p>
+        <header className="space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold uppercase tracking-widest animate-fade-in">
+            <Zap className="w-3 h-3 fill-current" />
+            Performance Case Study: Phase 1
           </div>
-          
-          <Card className="bg-neutral-900 border-neutral-800 shadow-2xl p-6 min-w-[280px]">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-neutral-500 uppercase">Heap Usage</span>
-                <span className="text-destructive text-xs font-bold font-mono">{memUsage ? Math.round(memUsage / 1048576) : '--'} MB</span>
-              </div>
-              <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden">
-                <div className={`h-full bg-destructive transition-all duration-1000 ${data.length > 0 ? 'w-[85%]' : 'w-[5%]'}`}></div>
-              </div>
-              <p className="text-[10px] text-neutral-500 italic text-center underline decoration-neutral-700">Main thread status: {data.length > 0 ? 'HEAVILY THROTTLED' : 'IDLE'}</p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+            <div className="space-y-2">
+              <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-none bg-gradient-to-r from-[#171717] to-[#737373] dark:from-[#ededed] dark:to-[#737373] bg-clip-text text-transparent">
+                Unoptimized<br />Legacy System.
+              </h1>
+              <p className="text-lg text-neutral-500 max-w-xl font-medium">
+                Simulating the failure of monolithic data structures. 1 Million records loaded directly into Client-State without virtualization.
+              </p>
             </div>
-          </Card>
-        </div>
+            
+            <Card className="group relative overflow-hidden bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl border-neutral-200 dark:border-neutral-800 shadow-2xl transition-all duration-500 hover:shadow-indigo-500/10">
+              <CardContent className="p-6 min-w-[300px] space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Browser Heap</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                    <span className="text-lg font-mono font-black text-rose-500">{memUsage ? Math.round(memUsage / 1048576) : '--'} MB</span>
+                  </div>
+                </div>
+                <div className="h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full bg-rose-500 transition-all duration-1000 ${data.length > 0 ? 'w-full' : 'w-[5%]'}`} 
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[10px] font-bold text-neutral-400 uppercase tracking-tighter">
+                  <span>State: {data.length > 0 ? 'MEMORY_STRESSED' : 'STABLE'}</span>
+                  <span>{data.length.toLocaleString()} ROWS</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </header>
 
-        {/* Control Center */}
-        <Card className="border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden bg-white dark:bg-neutral-900">
-           <CardHeader className="border-b bg-neutral-50/50 dark:bg-neutral-800/50 px-8 py-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
+        {/* Dashboard Shell */}
+        <div className="space-y-6">
+          {/* Action Bar */}
+          <div className="flex flex-col lg:flex-row gap-4">
             <Button 
               onClick={handleFetch} 
               disabled={isLoading}
-              className="group relative flex-1 h-20 bg-destructive hover:bg-red-600 text-white border-none shadow-[0_10px_0_0_#991b1b] active:shadow-none active:translate-y-[10px] transition-all overflow-hidden"
+              className={`relative h-16 px-8 rounded-2xl font-bold text-base transition-all duration-300 flex items-center gap-3 overflow-hidden group shadow-xl ${
+                isLoading 
+                ? 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800' 
+                : 'bg-[#171717] text-white dark:bg-white dark:text-black hover:scale-[1.02] active:scale-[0.98]'
+              }`}
             >
-              <div className="relative z-10 flex items-center justify-center gap-4">
-                {isLoading ? <RefreshCcw className="w-8 h-8 animate-spin" /> : <Database className="w-8 h-8 group-hover:scale-110 transition-transform" />}
-                <div className="text-left">
-                  <div className="text-xl font-black uppercase leading-none tracking-tighter">Fetch and show data</div>
-                  <div className="text-[10px] uppercase font-bold opacity-70">Trigger Main-Thread Execution Lock</div>
-                </div>
-              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:translate-x-full transition-transform duration-1000 -translate-x-full" />
+              {isLoading ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <Database className="w-5 h-5" />}
+              <span>{isLoading ? "STREAMING PAYLOAD..." : "Fetch and show data"}</span>
             </Button>
-                <div className="h-14 px-6 flex items-center bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 font-mono text-xs">
-                   <span className="text-neutral-400 mr-2 uppercase">Log:</span> <span className="font-bold text-neutral-800 dark:text-neutral-200 truncate max-w-[200px]">{status}</span>
-                </div>
-              </div>
 
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
-                <Input 
-                  placeholder="Filter by name, email, or role..."
-                  className="h-14 pl-12 text-base border-2 focus-visible:ring-destructive rounded-xl"
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+            <div className="relative flex-1 group">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 group-focus-within:text-indigo-500 transition-colors" />
+              <Input 
+                placeholder="Search across 1M records (Warning: Heavy CPU Lag)..."
+                className="h-16 pl-14 pr-6 rounded-2xl border-neutral-200 dark:border-neutral-800 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md focus-visible:ring-indigo-500/50 focus-visible:ring-offset-0 text-base font-medium shadow-lg transition-all"
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center h-16 px-6 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl gap-3 min-w-[240px]">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="flex flex-col leading-none">
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-600/60 dark:text-amber-400/60 mb-1">Status</span>
+                <span className="text-xs font-bold font-mono text-amber-700 dark:text-amber-300 truncate max-w-[150px]">{status}</span>
               </div>
             </div>
-          </CardHeader>
+          </div>
 
-          <CardContent className="p-0 overflow-x-auto">
-            {data.length > 0 ? (
-              <Table>
-                <TableHeader className="bg-neutral-50 dark:bg-neutral-950">
-                  <TableRow className="border-b border-neutral-200 dark:border-neutral-800">
-                    <TableHead className="px-6 py-4 font-black text-[10px] tracking-widest uppercase text-neutral-400">UUID / Identity</TableHead>
-                    <TableHead className="px-6 py-4 font-black text-[10px] tracking-widest uppercase text-neutral-400">Information</TableHead>
-                    <TableHead className="px-6 py-4 font-black text-[10px] tracking-widest uppercase text-neutral-400">Context</TableHead>
-                    <TableHead className="px-6 py-4 font-black text-[10px] tracking-widest uppercase text-neutral-400">Metrics</TableHead>
-                    <TableHead className="px-6 py-4 font-black text-[10px] tracking-widest uppercase text-neutral-400 text-right">Ops</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredData.map((row) => (
-                    <TableRow key={row.id} className="group hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors border-b dark:border-neutral-800">
-                      <TableCell className="px-6 py-6 align-top">
-                        <div className="font-mono text-[10px] text-neutral-400 mb-1">{row.id}</div>
-                        <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter">Loc: {row.location}</Badge>
-                      </TableCell>
-                      <TableCell className="px-6 py-6 align-top">
-                        <div className="font-black text-xl text-neutral-900 dark:text-neutral-100 group-hover:text-destructive transition-colors">{row.name}</div>
-                        <div className="text-sm font-medium text-neutral-500">{row.email}</div>
-                      </TableCell>
-                      <TableCell className="px-6 py-6 align-top">
-                        <div className="text-sm font-bold text-neutral-800 dark:text-neutral-200">{row.role}</div>
-                        <div className="text-xs text-neutral-500 underline decoration-neutral-300 dark:decoration-neutral-700">{row.department}</div>
-                      </TableCell>
-                      <TableCell className="px-6 py-6 align-top">
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black text-neutral-400">SALARY</span>
-                            <span className="text-sm font-mono font-bold">${row.salary.toLocaleString()}</span>
-                          </div>
-                          <Badge className={`w-fit py-0.5 text-[9px] font-black uppercase ${
-                            row.status === 'Active' ? 'bg-emerald-500 text-white' : 'bg-neutral-400 text-white'
-                          }`}>{row.status}</Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-6 py-6 text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="hover:bg-neutral-200 dark:hover:bg-neutral-800 h-10 w-10 text-neutral-400 hover:text-destructive transition-all"
-                          onClick={() => setEditingRow(row)}
-                        >
-                          <Edit3 className="w-5 h-5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="p-20 text-center flex flex-col items-center gap-4 opacity-50">
-                <Database className="w-12 h-12 text-neutral-300" />
-                <p className="font-serif italic text-neutral-400">Storage not yet loaded. Press button to stream 300MB...</p>
+          {/* Main Table View */}
+          <Card className="border-neutral-200 dark:border-neutral-800 bg-white/30 dark:bg-neutral-900/30 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors duration-500">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                {data.length > 0 ? (
+                  <Table>
+                    <TableHeader className="bg-neutral-50/50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800">
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="w-24 px-8 py-5 font-bold text-[10px] uppercase tracking-widest text-neutral-400">ID</TableHead>
+                        <TableHead className="px-8 py-5 font-bold text-[10px] uppercase tracking-widest text-neutral-400">Entity Metadata</TableHead>
+                        <TableHead className="px-8 py-5 font-bold text-[10px] uppercase tracking-widest text-neutral-400">Commercial</TableHead>
+                        <TableHead className="px-8 py-5 font-bold text-[10px] uppercase tracking-widest text-neutral-400 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredData.map((row) => (
+                        <TableRow key={row.id} className="group border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-all duration-200">
+                          <TableCell className="px-8 py-5 font-mono text-[10px] text-neutral-400">#{row.id.split('-')[1]}</TableCell>
+                          <TableCell className="px-8 py-5">
+                            <div className="flex flex-col">
+                              <span className="text-base font-bold text-[#171717] dark:text-[#ededed] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{row.name}</span>
+                              <span className="text-xs text-neutral-500 font-medium">{row.email}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-8 py-5">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-neutral-700 dark:text-neutral-300">${row.salary.toLocaleString()}</span>
+                              <Badge variant="secondary" className="w-fit text-[9px] h-4 font-black px-1.5 rounded-sm uppercase tracking-tighter mt-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-none">{row.role}</Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-8 py-5 text-right">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="h-8 w-8 px-0 rounded-lg hover:bg-indigo-500/10 hover:text-indigo-600 text-neutral-400 transition-all"
+                              onClick={() => setEditingRow(row)}
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="py-40 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-indigo-500 rounded-full blur-2xl opacity-20 animate-pulse" />
+                      <Database className="relative w-16 h-16 text-neutral-300 dark:text-neutral-700" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xl font-bold text-neutral-400 dark:text-neutral-600 uppercase tracking-tighter italic">Database Latent</p>
+                      <p className="text-xs text-neutral-500 max-w-[240px]">The local storage is ready for ingestion. Initiating the fetch will stress the JavaScript engine.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+            {data.length > 0 && (
+              <div className="px-8 py-4 bg-rose-500/5 border-t border-neutral-200 dark:border-neutral-800 backdrop-blur-xl">
+                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 text-center">
+                  Showing <span className="text-rose-500 underline underline-offset-4">{data.length.toLocaleString()}</span> records // Thread blocking: <span className="text-rose-600 font-black">HIGH RISK</span>
+                </p>
               </div>
             )}
-          </CardContent>
-          {data.length > 0 && (
-            <div className="p-6 bg-neutral-100/50 dark:bg-neutral-950/50 border-t border-neutral-200 dark:border-neutral-800 text-center">
-               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">
-                Data Stream Active // Rendering index <span className="text-destructive font-bold underline">0 - 15</span> of 1,000,000
-              </p>
-            </div>
-          )}
-        </Card>
+          </Card>
+        </div>
       </div>
 
-      {/* Edit Dialog */}
+      {/* Modern Edit Dialog */}
       <Dialog open={!!editingRow} onOpenChange={() => setEditingRow(null)}>
-        <DialogContent className="sm:max-w-[700px] border-neutral-200 dark:border-neutral-800 shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-2">
-              <Settings2 className="w-5 h-5 text-destructive" /> Modify Record
-            </DialogTitle>
-            <DialogDescription className="text-neutral-500 font-medium">
-              Updating this record will require the server to re-write a 300MB JSON file.
+        <DialogContent className="sm:max-w-xl rounded-[2rem] border-neutral-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-2xl shadow-[0_32px_128px_-16px_rgba(0,0,0,0.3)] p-0 overflow-hidden">
+          <DialogHeader className="p-8 pb-0">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-4">
+              <Settings2 className="w-6 h-6 text-indigo-600" />
+            </div>
+            <DialogTitle className="text-3xl font-bold tracking-tight">Modify Instance</DialogTitle>
+            <DialogDescription className="text-neutral-500 text-base font-medium">
+              Mutating this record will trigger a full JSON block re-write on the server runtime.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid grid-cols-2 gap-6 py-6">
+          <div className="p-8 grid grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Full Name</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">Entity Name</Label>
               <Input 
-                id="name" 
                 value={editingRow?.name || ""} 
                 onChange={(e) => setEditingRow({...editingRow, name: e.target.value})}
-                className="font-bold h-12 border-2 focus-visible:ring-destructive"
+                className="h-14 rounded-xl border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-white/5 font-bold"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">Contact Email</Label>
+              <Input 
+                value={editingRow?.email || ""} 
+                onChange={(e) => setEditingRow({...editingRow, email: e.target.value})}
+                className="h-14 rounded-xl border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-white/5 font-medium text-neutral-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">Role Architecture</Label>
+              <Input 
+                value={editingRow?.role || ""} 
+                onChange={(e) => setEditingRow({...editingRow, role: e.target.value})}
+                className="h-14 rounded-xl border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-white/5 font-bold"
               />
             </div>
              <div className="space-y-2">
-              <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Email Address</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">Metrics (Salary)</Label>
               <Input 
-                id="email" 
-                value={editingRow?.email || ""} 
-                onChange={(e) => setEditingRow({...editingRow, email: e.target.value})}
-                className="font-medium h-12 border-2 focus-visible:ring-destructive"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role" className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Role / Position</Label>
-              <Input 
-                id="role" 
-                value={editingRow?.role || ""} 
-                onChange={(e) => setEditingRow({...editingRow, role: e.target.value})}
-                className="font-bold h-12 border-2 focus-visible:ring-destructive"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="salary" className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Annual Salary ($)</Label>
-              <Input 
-                id="salary" 
                 type="number"
-                value={editingRow?.salary || 0} 
+                value={editingRow?.salary || 50000} 
                 onChange={(e) => setEditingRow({...editingRow, salary: parseInt(e.target.value)})}
-                className="font-mono font-bold h-12 border-2 focus-visible:ring-destructive"
-              />
-            </div>
-            <div className="space-y-2 col-span-2">
-              <Label htmlFor="bio" className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Biography / Notes</Label>
-              <Input 
-                id="bio" 
-                value={editingRow?.bio || ""} 
-                onChange={(e) => setEditingRow({...editingRow, bio: e.target.value})}
-                className="italic font-medium h-12 border-2 focus-visible:ring-destructive"
+                className="h-14 rounded-xl border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-white/5 font-mono font-bold"
               />
             </div>
           </div>
 
-          <DialogFooter className="bg-neutral-50 dark:bg-neutral-900 -mx-6 -mb-6 p-6 border-t dark:border-neutral-800">
-            <Button variant="outline" onClick={() => setEditingRow(null)} className="h-12 px-6 font-bold uppercase text-xs tracking-widest">Abort</Button>
+          <DialogFooter className="p-8 pt-4 bg-neutral-50 dark:bg-neutral-800/30 flex gap-3">
+            <Button variant="ghost" onClick={() => setEditingRow(null)} className="flex-1 h-14 rounded-xl font-bold">Discard</Button>
             <Button 
-               variant="destructive" 
                onClick={handleUpdate} 
                disabled={isUpdating}
-               className="h-12 px-8 font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all gap-2"
+               className="flex-1 h-14 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
             >
-              {isUpdating ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <HardDrive className="w-4 h-4" />}
-              Commit Heavy Update
+              {isUpdating ? <RefreshCcw className="w-5 h-5 animate-spin mr-2" /> : <HardDrive className="w-5 h-5 mr-2" />}
+              Commit Mutation
             </Button>
           </DialogFooter>
         </DialogContent>
