@@ -96,14 +96,16 @@ export default function Home() {
     }
   };
 
-  // UNOPTIMIZED FILTERING: No virtualization, raw DOM pressure
-  const filteredData = search 
+
+  // UNOPTIMIZED BUT CONTROLLED: Load 1M into state, but only force DOM to render 100k.
+  // This is still EXTREMELY laggy but prevents a complete browser process crash.
+  const filteredData = (search 
     ? data.filter(item => 
         item.name.toLowerCase().includes(search.toLowerCase()) || 
         item.email.toLowerCase().includes(search.toLowerCase()) ||
         item.role?.toLowerCase().includes(search.toLowerCase())
       )
-    : data;
+    : data).slice(0, 100000);
 
   if (!mounted) return null;
 
@@ -251,13 +253,12 @@ export default function Home() {
                 )}
               </div>
             </CardContent>
-            {data.length > 0 && (
-              <div className="px-8 py-4 bg-rose-500/5 border-t border-neutral-200 dark:border-neutral-800 backdrop-blur-xl">
+
+            <div className="px-8 py-4 bg-rose-500/5 border-t border-neutral-200 dark:border-neutral-800 backdrop-blur-xl">
                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 text-center">
-                  Showing <span className="text-rose-500 underline underline-offset-4">{data.length.toLocaleString()}</span> records // Thread blocking: <span className="text-rose-600 font-black">HIGH RISK</span>
+                  Memory: <span className="text-rose-500 underline underline-offset-4">{data.length.toLocaleString()}</span> items // DOM: <span className="text-rose-600 font-black">100,000</span> rows rendered // Thread Status: <span className="text-rose-600 font-black">UNSTABLE</span>
                 </p>
-              </div>
-            )}
+            </div>
           </Card>
         </div>
       </div>
