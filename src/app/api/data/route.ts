@@ -3,59 +3,59 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
-// HEAVY MOCK GENERATOR: We generate a significant dataset for the Edge to ensure 
-// that client-side rendering and filtering still lag as intended.
-const generateHeavyMock = (count: number) => {
-  return Array.from({ length: count }, (_, i) => ({
-    id: `edge-mock-${i}`,
-    name: `Pseudo Record ${i}`,
-    email: `heavy-payload-${i}@edge-simulation.io`,
-    role: "Mock Developer",
-    department: "Lag Simulation",
-    status: i % 3 === 0 ? "Active" : "Inactive",
-    joinedDate: "2024-01-01",
-    location: "Global Edge",
-    salary: 75000 + (i % 1000),
-    performance: 5,
-    bio: "This is a simulated heavy record used to demonstrate client-side bottlenecks on the web deployment."
-  }));
-};
-
+// THE ULTIMATE UNOPTIMIZED STREAMER
+// We stream 1,000,000 rows manually to the client.
+// This is intentionally bad architecture designed to overwhelm the browser.
 export async function GET() {
-  try {
-    // If we are running the build or on the edge where fs isn't available
-    // but NODE_ENV is development (local machine), use the real file.
-    if (process.env.NODE_ENV === 'development') {
-      try {
-        const fs = await import('fs');
-        const path = await import('path');
-        const FILE_PATH = path.join(process.cwd(), 'public', 'data.json');
-        
-        if (fs.existsSync(FILE_PATH)) {
-          const fileContent = fs.readFileSync(FILE_PATH, 'utf-8');
-          return NextResponse.json(JSON.parse(fileContent));
-        }
-      } catch (innerError) {
-        console.warn("FS import failed even in dev, likely edge-shimmed environment.");
-      }
-    }
-  } catch (e) {
-    console.error("Local file read exception");
-  }
+  const encoder = new TextEncoder();
+  const totalRows = 1000000;
 
-  // ON THE WEB: We return 100,000 items instead of 50. 
-  // This is enough to lag any browser without virtualization.
-  const heavyData = generateHeavyMock(100000);
-  return NextResponse.json(heavyData);
+  const stream = new ReadableStream({
+    async start(controller) {
+      controller.enqueue(encoder.encode('['));
+      
+      for (let i = 0; i < totalRows; i++) {
+        const record = {
+          id: `row-${i}`,
+          name: `Unoptimized User ${i}`,
+          email: `crash-test-${i}@bad-ux.com`,
+          role: "Developer",
+          department: "Performance Bottlenecks",
+          status: "Active",
+          joinedDate: "2024-01-01",
+          location: "Browser Memory Hell",
+          salary: 50000 + i,
+          performance: 1,
+          bio: "This is a redundant string designed to occupy as much heap memory as possible to demonstrate the failure of unoptimized data handling at scale."
+        };
+        
+        let json = JSON.stringify(record);
+        if (i < totalRows - 1) json += ',';
+        
+        controller.enqueue(encoder.encode(json));
+        
+        // Yield every 5000 rows to prevent the Edge from timing out
+        if (i % 5000 === 0) {
+          await new Promise(r => setTimeout(r, 0));
+        }
+      }
+      
+      controller.enqueue(encoder.encode(']'));
+      controller.close();
+    }
+  });
+
+  return new Response(stream, {
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
 
 export async function PATCH() {
-  // Simulate a 2.5-second blocking delay before returning the error
-  // to show "Server Lag" on the web version.
-  await new Promise(resolve => setTimeout(resolve, 2500));
+  // Simulate 3 seconds of "Thinking" to show bad server IO
+  await new Promise(resolve => setTimeout(resolve, 3000));
   
   return NextResponse.json(
-    { error: "EDGE_LIMIT_REACHED: File System writes are physically impossible on Cloudflare Edge. This proves the need for a Database (Phase 2)." },
+    { error: "IO_FAILURE: Cloudflare Edge has no FileSystem. In a real app, this would be where we fail to save a 300MB file for a 1-row update." },
     { status: 403 }
   );
 }
