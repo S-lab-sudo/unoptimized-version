@@ -145,16 +145,19 @@ export default function Home() {
            <CardHeader className="border-b bg-neutral-50/50 dark:bg-neutral-800/50 px-8 py-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex items-center gap-4">
-                <Button 
-                  size="lg" 
-                  variant="destructive"
-                  onClick={handleFetch}
-                  disabled={isLoading}
-                  className="h-14 px-8 font-black text-sm uppercase tracking-widest shadow-xl hover:shadow-destructive/20 active:scale-95 transition-all gap-3"
-                >
-                  {isLoading ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <HardDrive className="w-5 h-5" />}
-                  {isLoading ? "STREAMING 300MB..." : "LOAD 1M ROWS"}
-                </Button>
+            <Button 
+              onClick={handleFetch} 
+              disabled={isLoading}
+              className="group relative flex-1 h-20 bg-destructive hover:bg-red-600 text-white border-none shadow-[0_10px_0_0_#991b1b] active:shadow-none active:translate-y-[10px] transition-all overflow-hidden"
+            >
+              <div className="relative z-10 flex items-center justify-center gap-4">
+                {isLoading ? <RefreshCcw className="w-8 h-8 animate-spin" /> : <Database className="w-8 h-8 group-hover:scale-110 transition-transform" />}
+                <div className="text-left">
+                  <div className="text-xl font-black uppercase leading-none tracking-tighter">Fetch and show data</div>
+                  <div className="text-[10px] uppercase font-bold opacity-70">Trigger Main-Thread Execution Lock</div>
+                </div>
+              </div>
+            </Button>
                 <div className="h-14 px-6 flex items-center bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 font-mono text-xs">
                    <span className="text-neutral-400 mr-2 uppercase">Log:</span> <span className="font-bold text-neutral-800 dark:text-neutral-200 truncate max-w-[200px]">{status}</span>
                 </div>
